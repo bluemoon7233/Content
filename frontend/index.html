@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Social Media Scheduler</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header>
+  <h1>Social Media Scheduler</h1>
+  <div id="meta-status">Checking Meta…</div>
+</header>
+
+<main>
+  <!-- Upload -->
+  <div id="upload-zone">
+    <div class="icon">📄</div>
+    <p><strong>Drop your content plan here</strong></p>
+    <p>PDF or HTML &nbsp;·&nbsp; Claude will extract and structure your posts</p>
+    <input type="file" id="file-input" accept=".pdf,.html,.htm">
+  </div>
+
+  <!-- Progress -->
+  <div id="progress-bar">
+    <div class="progress-track"><div class="progress-fill"></div></div>
+    <div id="progress-label"></div>
+  </div>
+
+  <!-- AI Summary -->
+  <div id="summary-section">
+    <h3>Content Plan Summary</h3>
+    <p id="summary-text"></p>
+  </div>
+
+  <!-- Extracted Posts -->
+  <div id="posts-section">
+    <h2>Extracted Posts <span id="post-count" style="color:var(--text-muted);font-weight:400;font-size:0.9rem"></span></h2>
+    <div id="posts-container"></div>
+  </div>
+
+  <!-- Publish Actions -->
+  <div id="actions-section">
+    <h2>Publish to Meta</h2>
+    <div class="action-buttons">
+      <button class="btn btn-primary" onclick="doAction('publish_now')">Publish Now</button>
+      <button class="btn btn-secondary" onclick="doAction('schedule')">Schedule (use post dates)</button>
+      <button class="btn btn-draft" onclick="doAction('draft')">Save as Drafts</button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results-section">
+    <div id="results-container"></div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script src="/app.js"></script>
+<script>
+  // Update post count label when posts render
+  const observer = new MutationObserver(() => {
+    const n = document.querySelectorAll('.post-card').length;
+    document.getElementById('post-count').textContent = n ? `(${n})` : '';
+  });
+  observer.observe(document.getElementById('posts-container'), { childList: true });
+</script>
+
+</body>
+</html>
