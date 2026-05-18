@@ -1052,6 +1052,10 @@
           <div class="settings-section-body" id="credentialsDisplay"></div>
         </div>
 
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+          <button class="btn btn-secondary" onclick="testWorker()">Test Worker Connection</button>
+          <button class="btn btn-secondary" onclick="testMetaToken()">Test Meta Token</button>
+        </div>
         <button class="btn btn-danger" onclick="resetCredentials()">Disconnect & Reset</button>
       </div>
 
@@ -1251,10 +1255,9 @@
     }
   }
 
-  // Upload image to worker immediately and return a persistent public URL.
-  // This runs at save time so the URL survives page refreshes.
+  // Upload image to worker and return { url, error }
   async function uploadImageNow(base64, type) {
-    if (!base64) return null;
+    if (!base64) return { url: null, error: null };
     try {
       const res = await fetch(WORKER_URL, {
         method: 'POST',
@@ -1262,8 +1265,11 @@
         body: JSON.stringify({ action: 'upload_image', imageBase64: base64, imageType: type })
       });
       const data = await res.json();
-      return data.success ? data.url : null;
-    } catch { return null; }
+      if (data.success) return { url: data.url, error: null };
+      return { url: null, error: data.error || 'Worker returned failure' };
+    } catch (e) {
+      return { url: null, error: e.message || 'Could not reach worker' };
+    }
   }
 
   // SAVE DRAFT
@@ -1275,8 +1281,12 @@
     if (mediaBase64) {
       showToast('Uploading image…', '');
       const type = mediaBase64.match(/data:(.*?);/)?.[1] || 'image/jpeg';
-      imageUrl = await uploadImageNow(mediaBase64, type);
-      if (!imageUrl) showToast('Image upload failed — post saved without image.', 'error');
+      const result = await uploadImageNow(mediaBase64, type);
+      if (result.error) {
+        alert(`Image upload failed:\n\n${result.error}\n\nMake sure your worker is deployed with the KV binding set to STORE.`);
+        return;
+      }
+      imageUrl = result.url;
     }
 
     const post = {
@@ -1307,8 +1317,12 @@
     if (mediaBase64) {
       showToast('Uploading image…', '');
       const type = mediaBase64.match(/data:(.*?);/)?.[1] || 'image/jpeg';
-      imageUrl = await uploadImageNow(mediaBase64, type);
-      if (!imageUrl) showToast('Image upload failed — post saved without image.', 'error');
+      const result = await uploadImageNow(mediaBase64, type);
+      if (result.error) {
+        alert(`Image upload failed:\n\n${result.error}\n\nMake sure your worker is deployed with the KV binding set to STORE.`);
+        return;
+      }
+      imageUrl = result.url;
     }
 
     const post = {
@@ -1562,6 +1576,57 @@ Instructions:
 - For Instagram feed post: First create a media container at https://graph.facebook.com/v19.0/${creds.igId}/media then publish it at /media_publish
 - Respond with "SUCCESS" if published, or the error message if it failed.
 - Keep response brief.`;
+  }
+
+  async function testWorker() {
+    try {
+      showToast('Testing worker…', '');
+      // 1. Basic reachability
+      const pingRes = await fetch(WORKER_URL);
+      const ping = await pingRes.json();
+
+      // 2. Try a tiny KV write+read via upload_image with a 1x1 pixel PNG
+      const tiny1x1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      const uploadRes = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'upload_image', imageBase64: tiny1x1, imageType: 'image/png' })
+      });
+      const upload = await uploadRes.json();
+
+      if (upload.success) {
+        // 3. Verify the image is actually served
+        const imgRes = await fetch(upload.url);
+        const ok = imgRes.ok;
+        // Clean up
+        await fetch(WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete_image', filename: upload.filename }) });
+        alert(`✅ Worker is working!\n\nImage upload: OK\nImage URL: ${upload.url}\nImage served: ${ok ? 'YES' : 'NO (check KV binding)'}`);
+      } else {
+        alert(`❌ Worker reached but image upload failed:\n\n${upload.error}\n\nCheck that your KV namespace binding is named exactly "STORE".`);
+      }
+    } catch(e) {
+      alert(`❌ Cannot reach worker:\n\n${e.message}\n\nCheck that ${WORKER_URL} is deployed.`);
+    }
+  }
+
+  async function testMetaToken() {
+    if (!creds?.token) { alert('No token saved — go through setup first.'); return; }
+    try {
+      showToast('Testing Meta token…', '');
+      const res = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'debug_schedule', token: creds.token, pageId: creds.pageId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`✅ Meta token is valid!\n\nPage: ${data.page?.name}\nPage ID: ${data.page?.id}`);
+      } else {
+        alert(`❌ Meta token error:\n\n${data.error}\n\nYou may need a fresh Page Access Token.`);
+      }
+    } catch(e) {
+      alert(`❌ Error: ${e.message}`);
+    }
   }
 
   async function debugSchedule() {
