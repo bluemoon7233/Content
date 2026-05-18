@@ -1523,28 +1523,24 @@
       }
 
       const allOk = results.every(r => r.success);
-      const errors = results.filter(r => !r.success).map(r => `${r.platform}: ${r.error}`).join(', ');
+      const failDetails = results.filter(r => !r.success).map(r => `${r.platform}: ${r.error}`).join('\n');
 
       if (allOk) {
         post.status = isScheduled ? 'scheduled_meta' : 'published';
         post.publishedAt = new Date().toISOString();
-        savePosts();
-        renderPosts();
-        renderCalendar();
-        showToast(isScheduled ? `Scheduled in Meta Business Suite for ${platformStr}.` : `Published to ${platformStr} successfully.`, 'success');
+        savePosts(); renderPosts(); renderCalendar();
+        showToast(isScheduled ? `Scheduled in Meta Business Suite · ${platformStr}` : `Published to ${platformStr} successfully.`, 'success');
       } else if (results.some(r => r.success)) {
         post.status = isScheduled ? 'scheduled_meta' : 'published';
         post.publishedAt = new Date().toISOString();
-        savePosts();
-        renderPosts();
-        renderCalendar();
-        showToast(`Partially done. Failed: ${errors}`, 'error');
+        savePosts(); renderPosts(); renderCalendar();
+        alert(`Partially succeeded.\n\nFailed:\n${failDetails}`);
       } else {
-        showToast(`Failed: ${errors}`, 'error');
+        alert(`Failed to post.\n\n${failDetails}`);
       }
 
     } catch (err) {
-      showToast(`Failed: ${err.message}`, 'error');
+      alert(`Error: ${err.message}`);
     }
   }
 
@@ -1614,37 +1610,36 @@ Instructions:
     showToast(`Scheduling ${eligible.length} posts — please wait...`, '');
 
     let success = 0;
-    let failed = 0;
-    const failedPosts = [];
+    const errors = [];
 
     for (const post of eligible) {
-      try {
-        // Image URL was stored at save time — no re-upload needed
-        const imageUrl = post.imageUrl || null;
+      const imageUrl = post.imageUrl || null;
+      const postErrors = [];
 
-        const results = [];
+      // Schedule to Facebook
+      if (post.platforms.fb && creds.pageId) {
+        const res = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'schedule_facebook',
+            token: creds.token,
+            pageId: creds.pageId,
+            caption: post.caption,
+            imageUrl,
+            postType: post.type,
+            scheduledTime: post.date
+          })
+        });
+        const data = await res.json();
+        if (!data.success) postErrors.push(`Facebook: ${data.error}`);
+      }
 
-        // Schedule to Facebook
-        if (post.platforms.fb && creds.pageId) {
-          const res = await fetch(WORKER_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'schedule_facebook',
-              token: creds.token,
-              pageId: creds.pageId,
-              caption: post.caption,
-              imageUrl,
-              postType: post.type,
-              scheduledTime: post.date
-            })
-          });
-          const data = await res.json();
-          results.push(data);
-        }
-
-        // Schedule to Instagram
-        if (post.platforms.ig && creds.igId && imageUrl) {
+      // Schedule to Instagram
+      if (post.platforms.ig && creds.igId) {
+        if (!imageUrl) {
+          postErrors.push(`Instagram: no image attached to this post`);
+        } else {
           const res = await fetch(WORKER_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1659,37 +1654,30 @@ Instructions:
             })
           });
           const data = await res.json();
-          results.push(data);
+          if (!data.success) postErrors.push(`Instagram: ${data.error}`);
         }
-
-        const allOk = results.length > 0 && results.every(r => r.success);
-
-        if (allOk) {
-          post.status = 'scheduled_meta';
-          post.publishedAt = new Date().toISOString();
-          success++;
-        } else {
-          failed++;
-          failedPosts.push(post.caption.slice(0, 40));
-        }
-
-      } catch (err) {
-        failed++;
-        failedPosts.push(post.caption.slice(0, 40));
       }
 
-      // Small delay between posts to avoid rate limiting
-      await new Promise(r => setTimeout(r, 500));
+      if (postErrors.length === 0) {
+        post.status = 'scheduled_meta';
+        post.publishedAt = new Date().toISOString();
+        success++;
+      } else {
+        errors.push(`"${post.caption.slice(0, 30)}…"\n  → ${postErrors.join('\n  → ')}`);
+      }
+
+      await new Promise(r => setTimeout(r, 400));
     }
 
     savePosts();
     renderPosts();
     renderCalendar();
 
-    if (failed === 0) {
+    if (errors.length === 0) {
       showToast(`All ${success} posts scheduled in Meta Business Suite.`, 'success');
     } else {
-      showToast(`${success} scheduled, ${failed} failed. Check Business Suite.`, 'error');
+      // Show full error details in an alert so nothing is hidden
+      alert(`Scheduled ${success} of ${eligible.length} posts.\n\nFailed:\n\n${errors.join('\n\n')}`);
     }
   }
   function deletePost(id) {
