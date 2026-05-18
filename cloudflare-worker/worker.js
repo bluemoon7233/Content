@@ -78,11 +78,10 @@ async function uploadImage({ imageBase64, imageType = 'image/jpeg' }, env, url) 
     const ext = imageType.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
     const filename = `bm-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-    // Store in KV — auto-expires after 1 hour (plenty of time for Meta to fetch it)
+    // Store in KV — no expiry, deleted explicitly after publishing
     await env.STORE.put(
       `image:${filename}`,
-      JSON.stringify({ data: base64, type: imageType }),
-      { expirationTtl: 3600 }
+      JSON.stringify({ data: base64, type: imageType })
     );
 
     const publicUrl = `${url.origin}/image/${filename}`;

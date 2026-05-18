@@ -1251,10 +1251,34 @@
     }
   }
 
+  // Upload image to worker immediately and return a persistent public URL.
+  // This runs at save time so the URL survives page refreshes.
+  async function uploadImageNow(base64, type) {
+    if (!base64) return null;
+    try {
+      const res = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'upload_image', imageBase64: base64, imageType: type })
+      });
+      const data = await res.json();
+      return data.success ? data.url : null;
+    } catch { return null; }
+  }
+
   // SAVE DRAFT
-  function saveDraft() {
+  async function saveDraft() {
     const caption = document.getElementById('captionInput').value.trim();
     if (!caption) { showToast('Please write a caption first.', 'error'); return; }
+
+    let imageUrl = null;
+    if (mediaBase64) {
+      showToast('Uploading image…', '');
+      const type = mediaBase64.match(/data:(.*?);/)?.[1] || 'image/jpeg';
+      imageUrl = await uploadImageNow(mediaBase64, type);
+      if (!imageUrl) showToast('Image upload failed — post saved without image.', 'error');
+    }
+
     const post = {
       id: Date.now(),
       caption,
@@ -1262,7 +1286,7 @@
       type: document.getElementById('postType').value,
       date: document.getElementById('scheduleDate').value,
       status: 'draft',
-      image: mediaBase64 || null,
+      imageUrl,
       created: new Date().toISOString()
     };
     posts.unshift(post);
@@ -1272,12 +1296,20 @@
   }
 
   // SCHEDULE POST
-  function schedulePost() {
+  async function schedulePost() {
     const caption = document.getElementById('captionInput').value.trim();
     if (!caption) { showToast('Please write a caption first.', 'error'); return; }
     const date = document.getElementById('scheduleDate').value;
     if (!date) { showToast('Please select a date and time.', 'error'); return; }
     if (!platforms.ig && !platforms.fb) { showToast('Please select at least one platform.', 'error'); return; }
+
+    let imageUrl = null;
+    if (mediaBase64) {
+      showToast('Uploading image…', '');
+      const type = mediaBase64.match(/data:(.*?);/)?.[1] || 'image/jpeg';
+      imageUrl = await uploadImageNow(mediaBase64, type);
+      if (!imageUrl) showToast('Image upload failed — post saved without image.', 'error');
+    }
 
     const post = {
       id: Date.now(),
@@ -1286,7 +1318,7 @@
       type: document.getElementById('postType').value,
       date,
       status: 'scheduled',
-      image: mediaBase64 || null,
+      imageUrl,
       created: new Date().toISOString()
     };
     posts.unshift(post);
@@ -1410,29 +1442,9 @@
     showToast(isScheduled ? 'Sending to Business Suite...' : 'Publishing now...', '');
 
     try {
-      let imageUrl = null;
+      // Image URL was stored at save time — no re-upload needed
+      let imageUrl = post.imageUrl || null;
       let imageFilename = null;
-
-      // Upload image to R2 if attached
-      if (post.image) {
-        showToast('Uploading image...', '');
-        const uploadRes = await fetch(WORKER_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'upload_image',
-            imageBase64: post.image,
-            imageType: post.image.match(/data:(.*?);/)?.[1] || 'image/jpeg'
-          })
-        });
-        const uploadData = await uploadRes.json();
-        if (!uploadData.success) {
-          showToast(`Image upload failed: ${uploadData.error}`, 'error');
-          return;
-        }
-        imageUrl = uploadData.url;
-        imageFilename = uploadData.filename;
-      }
 
       const results = [];
       const fbAction = isScheduled ? 'schedule_facebook' : 'publish_facebook';
@@ -1607,26 +1619,8 @@ Instructions:
 
     for (const post of eligible) {
       try {
-        let imageUrl = null;
-        let imageFilename = null;
-
-        // Upload image if attached
-        if (post.image) {
-          const uploadRes = await fetch(WORKER_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'upload_image',
-              imageBase64: post.image,
-              imageType: post.image.match(/data:(.*?);/)?.[1] || 'image/jpeg'
-            })
-          });
-          const uploadData = await uploadRes.json();
-          if (uploadData.success) {
-            imageUrl = uploadData.url;
-            imageFilename = uploadData.filename;
-          }
-        }
+        // Image URL was stored at save time — no re-upload needed
+        const imageUrl = post.imageUrl || null;
 
         const results = [];
 
@@ -1707,18 +1701,12 @@ Instructions:
     showToast('Post deleted.');
   }
 
-  // SAVE
+  // SAVE — posts no longer contain base64 images (imageUrl is stored instead)
   function savePosts() {
-    // Strip base64 images before saving to localStorage to avoid quota errors
-    // Images are kept in memory only and re-attached when needed
-    const postsForStorage = posts.map(p => {
-      const { image, ...rest } = p;
-      return image ? { ...rest, hasImage: true } : rest;
-    });
     try {
-      localStorage.setItem('bm_posts', JSON.stringify(postsForStorage));
+      localStorage.setItem('bm_posts', JSON.stringify(posts));
     } catch(e) {
-      console.warn('localStorage quota exceeded — posts saved to KV only');
+      console.warn('localStorage quota exceeded');
     }
     // Sync full posts (with images) to KV
     fetch(WORKER_URL, {
@@ -1738,11 +1726,7 @@ Instructions:
       const data = await res.json();
       if (data.success && data.posts && data.posts.length > 0) {
         posts = data.posts;
-        // Save lightweight version to localStorage as backup
-        try {
-          const postsForStorage = posts.map(p => { const { image, ...rest } = p; return rest; });
-          localStorage.setItem('bm_posts', JSON.stringify(postsForStorage));
-        } catch(e) {}
+        try { localStorage.setItem('bm_posts', JSON.stringify(posts)); } catch(e) {}
       }
     } catch(e) {
       // KV unavailable — use localStorage fallback
