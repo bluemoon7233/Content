@@ -6,4 +6,4 @@ compatibility_date = "2024-09-23"
 
 [[kv_namespaces]]
 binding = "STORE"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = "b00b0f0a89454e5abf77898460fd3d08"
