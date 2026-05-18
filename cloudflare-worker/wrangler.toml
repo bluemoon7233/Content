@@ -2,9 +2,7 @@ name = "blue-moon-publisher"
 main = "worker.js"
 compatibility_date = "2024-09-23"
 
-[[r2_buckets]]
-binding = "IMAGES"
-bucket_name = "blue-moon-images"
+# No R2 bucket needed — images are stored temporarily in KV below
 
 [[kv_namespaces]]
 binding = "STORE"

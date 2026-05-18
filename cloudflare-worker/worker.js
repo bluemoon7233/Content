@@ -1,10 +1,9 @@
 /**
  * Blue Moon Publisher — Cloudflare Worker
  *
- * Handles:
- *  - R2 image upload/serve/delete (so Meta can fetch a public URL)
- *  - Meta Graph API calls (Facebook + Instagram publish/schedule)
- *  - KV post storage (persists the queue across devices/sessions)
+ * Uses KV only (no R2 bucket needed).
+ * Images are stored in KV temporarily, served publicly so Meta can fetch
+ * them, then auto-expire after 1 hour.
  */
 
 const GRAPH = 'https://graph.facebook.com/v21.0';
@@ -22,22 +21,27 @@ export default {
 
     const url = new URL(request.url);
 
-    // ── Serve images from R2 (gives Meta a public URL to fetch) ──────────────
+    // ── Serve images stored in KV ─────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname.startsWith('/image/')) {
-      const key = decodeURIComponent(url.pathname.slice(7));
-      const obj = await env.IMAGES.get(key);
-      if (!obj) return new Response('Not found', { status: 404 });
-      return new Response(obj.body, {
+      const key = 'image:' + decodeURIComponent(url.pathname.slice(7));
+      const stored = await env.STORE.get(key);
+      if (!stored) return new Response('Not found', { status: 404 });
+
+      const { data, type } = JSON.parse(stored);
+      const bytes = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+      return new Response(bytes, {
         headers: {
-          'Content-Type': obj.httpMetadata?.contentType || 'image/jpeg',
-          'Cache-Control': 'public, max-age=600',
+          'Content-Type': type || 'image/jpeg',
+          'Cache-Control': 'public, max-age=3600',
           ...CORS,
         },
       });
     }
 
     if (request.method !== 'POST') {
-      return json({ ok: true, service: 'Blue Moon Publisher' });
+      return new Response(JSON.stringify({ ok: true, service: 'Blue Moon Publisher' }), {
+        headers: { 'Content-Type': 'application/json', ...CORS },
+      });
     }
 
     let body;
@@ -48,40 +52,39 @@ export default {
     }
 
     switch (body.action) {
-      case 'upload_image':            return uploadImage(body, env, url);
-      case 'delete_image':            return deleteImage(body, env);
-      case 'publish_facebook':        return publishFacebook(body, false);
-      case 'schedule_facebook':       return publishFacebook(body, true);
+      case 'upload_image':                 return uploadImage(body, env, url);
+      case 'delete_image':                 return deleteImage(body, env);
+      case 'publish_facebook':             return publishFacebook(body, false);
+      case 'schedule_facebook':            return publishFacebook(body, true);
       case 'publish_instagram_container':  return igContainer(body, false);
       case 'schedule_instagram_container': return igContainer(body, true);
       case 'publish_instagram_publish':    return igPublish(body);
-      case 'save_posts':              return savePosts(body, env);
-      case 'load_posts':              return loadPosts(env);
-      case 'debug_schedule':          return debugSchedule(body);
+      case 'save_posts':                   return savePosts(body, env);
+      case 'load_posts':                   return loadPosts(env);
+      case 'debug_schedule':               return debugSchedule(body);
       default:
         return json({ error: `Unknown action: ${body.action}` }, 400);
     }
   },
 };
 
-// ── Image upload ──────────────────────────────────────────────────────────────
+// ── Image upload → KV (no R2 needed) ─────────────────────────────────────────
 
 async function uploadImage({ imageBase64, imageType = 'image/jpeg' }, env, url) {
-  if (!imageBase64) return json({ success: false, error: 'No image data' });
+  if (!imageBase64) return json({ success: false, error: 'No image data provided' });
 
   try {
-    // Strip the data URI prefix if present
     const base64 = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
-    const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-
     const ext = imageType.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
     const filename = `bm-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-    await env.IMAGES.put(filename, bytes, {
-      httpMetadata: { contentType: imageType },
-    });
+    // Store in KV — auto-expires after 1 hour (plenty of time for Meta to fetch it)
+    await env.STORE.put(
+      `image:${filename}`,
+      JSON.stringify({ data: base64, type: imageType }),
+      { expirationTtl: 3600 }
+    );
 
-    // Public URL served by this Worker
     const publicUrl = `${url.origin}/image/${filename}`;
     return json({ success: true, url: publicUrl, filename });
   } catch (e) {
@@ -92,7 +95,7 @@ async function uploadImage({ imageBase64, imageType = 'image/jpeg' }, env, url) 
 async function deleteImage({ filename }, env) {
   if (!filename) return json({ success: false, error: 'No filename' });
   try {
-    await env.IMAGES.delete(filename);
+    await env.STORE.delete(`image:${filename}`);
     return json({ success: true });
   } catch (e) {
     return json({ success: false, error: e.message });
@@ -104,36 +107,35 @@ async function deleteImage({ filename }, env) {
 async function publishFacebook({ token, pageId, caption, imageUrl, scheduledTime }, isSchedule) {
   if (!token || !pageId) return json({ success: false, error: 'Missing token or pageId' });
 
-  const schedTs = isSchedule && scheduledTime ? Math.floor(new Date(scheduledTime).getTime() / 1000) : null;
+  const schedTs = isSchedule && scheduledTime
+    ? Math.floor(new Date(scheduledTime).getTime() / 1000)
+    : null;
   const nowTs = Math.floor(Date.now() / 1000);
 
   if (schedTs && schedTs < nowTs + 600) {
-    return json({ success: false, error: 'Scheduled time must be at least 10 minutes in the future' });
+    return json({ success: false, error: 'Scheduled time must be at least 10 minutes from now' });
   }
 
   try {
-    let endpoint, params;
-
+    let data;
     if (imageUrl) {
-      endpoint = `/${pageId}/photos`;
-      params = {
+      const params = {
         access_token: token,
         caption,
         url: imageUrl,
         published: isSchedule ? 'false' : 'true',
       };
       if (schedTs) params.scheduled_publish_time = schedTs;
+      data = await graphPost(`/${pageId}/photos`, params);
     } else {
-      endpoint = `/${pageId}/feed`;
-      params = {
+      const params = {
         access_token: token,
         message: caption,
         published: isSchedule ? 'false' : 'true',
       };
       if (schedTs) params.scheduled_publish_time = schedTs;
+      data = await graphPost(`/${pageId}/feed`, params);
     }
-
-    const data = await graphPost(endpoint, params);
     return json({ success: true, id: data.id || data.post_id });
   } catch (e) {
     return json({ success: false, error: e.message });
@@ -143,22 +145,19 @@ async function publishFacebook({ token, pageId, caption, imageUrl, scheduledTime
 // ── Instagram ─────────────────────────────────────────────────────────────────
 
 async function igContainer({ token, igId, caption, imageUrl, scheduledTime }, isSchedule) {
-  if (!token || !igId) return json({ success: false, error: 'Missing token or igId' });
-  if (!imageUrl) return json({ success: false, error: 'Instagram requires an image URL' });
+  if (!token || !igId)  return json({ success: false, error: 'Missing token or igId' });
+  if (!imageUrl)        return json({ success: false, error: 'Instagram requires an image URL' });
 
-  const schedTs = isSchedule && scheduledTime ? Math.floor(new Date(scheduledTime).getTime() / 1000) : null;
+  const schedTs = isSchedule && scheduledTime
+    ? Math.floor(new Date(scheduledTime).getTime() / 1000)
+    : null;
 
   try {
-    const params = {
-      access_token: token,
-      caption,
-      image_url: imageUrl,
-    };
+    const params = { access_token: token, caption, image_url: imageUrl };
     if (schedTs) {
       params.published = 'false';
       params.scheduled_publish_time = schedTs;
     }
-
     const data = await graphPost(`/${igId}/media`, params);
     return json({ success: true, containerId: data.id });
   } catch (e) {
@@ -206,14 +205,17 @@ async function loadPosts(env) {
 
 async function debugSchedule({ token, pageId }) {
   try {
-    const data = await graphGet(`/${pageId}`, { access_token: token, fields: 'name,id' });
+    const qs = new URLSearchParams({ access_token: token, fields: 'name,id' });
+    const res = await fetch(`${GRAPH}/${pageId}?${qs}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
     return json({ success: true, page: data });
   } catch (e) {
     return json({ success: false, error: e.message });
   }
 }
 
-// ── Graph API helpers ─────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function graphPost(path, params) {
   const res = await fetch(GRAPH + path, {
@@ -225,16 +227,6 @@ async function graphPost(path, params) {
   if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
   return data;
 }
-
-async function graphGet(path, params) {
-  const qs = new URLSearchParams(params).toString();
-  const res = await fetch(`${GRAPH}${path}?${qs}`);
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-  return data;
-}
-
-// ── Response helpers ──────────────────────────────────────────────────────────
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
