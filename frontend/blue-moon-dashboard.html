@@ -1,0 +1,1901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blue Moon — Content Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #27304d;
+    --plum: #716386;
+    --mauve: #b87d80;
+    --petal: #e8c4c1;
+    --cream: #faf8f5;
+    --white: #ffffff;
+    --success: #7a9e7e;
+    --warning: #c4a86a;
+    --danger: #c47a7a;
+    --border: rgba(113, 99, 134, 0.15);
+    --shadow: 0 4px 24px rgba(39, 48, 77, 0.08);
+    --shadow-lg: 0 8px 40px rgba(39, 48, 77, 0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--cream);
+    color: var(--navy);
+    font-family: 'Raleway', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+  }
+
+  /* SETUP SCREEN */
+  #setupScreen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+    background: var(--cream);
+  }
+
+  .setup-card {
+    background: white;
+    border-radius: 16px;
+    padding: 48px;
+    max-width: 520px;
+    width: 100%;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border);
+  }
+
+  .setup-brand {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--mauve);
+    margin-bottom: 12px;
+  }
+
+  .setup-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px;
+    font-weight: 300;
+    color: var(--navy);
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+
+  .setup-title em { font-style: italic; color: var(--plum); }
+
+  .setup-subtitle {
+    font-size: 13px;
+    color: var(--plum);
+    line-height: 1.6;
+    margin-bottom: 36px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--plum);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid var(--petal);
+    border-radius: 8px;
+    font-family: 'Raleway', sans-serif;
+    font-size: 13px;
+    color: var(--navy);
+    background: var(--cream);
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  .form-input:focus {
+    border-color: var(--plum);
+    background: white;
+  }
+
+  .form-input::placeholder { color: #bbb; }
+
+  .setup-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--navy);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Raleway', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.2s;
+  }
+
+  .setup-btn:hover { background: var(--plum); }
+
+  .setup-note {
+    margin-top: 16px;
+    font-size: 11px;
+    color: #aaa;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  /* MAIN APP */
+  #app { display: none; min-height: 100vh; }
+
+  /* SIDEBAR */
+  .layout {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    width: 240px;
+    min-width: 240px;
+    background: var(--navy);
+    padding: 32px 0;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .sidebar-brand {
+    padding: 0 28px 32px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 24px;
+  }
+
+  .sidebar-brand-label {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--mauve);
+    margin-bottom: 4px;
+  }
+
+  .sidebar-brand-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    font-weight: 400;
+    color: white;
+    line-height: 1.2;
+  }
+
+  .sidebar-brand-name em { font-style: italic; color: var(--petal); }
+
+  .nav-section {
+    padding: 0 16px;
+    margin-bottom: 8px;
+  }
+
+  .nav-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    padding: 0 12px;
+    margin-bottom: 6px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: rgba(255,255,255,0.6);
+    font-size: 13px;
+    font-weight: 400;
+    transition: all 0.2s;
+    margin-bottom: 2px;
+  }
+
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: white; }
+  .nav-item.active { background: rgba(232,196,193,0.15); color: var(--petal); }
+
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 24px 28px 0;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .sidebar-footer-text {
+    font-size: 11px;
+    color: rgba(255,255,255,0.25);
+    line-height: 1.5;
+  }
+
+  /* MAIN CONTENT */
+  .main {
+    margin-left: 240px;
+    flex: 1;
+    padding: 40px 48px;
+    max-width: calc(100% - 240px);
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* PAGE HEADER */
+  .page-header {
+    margin-bottom: 40px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .page-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px;
+    font-weight: 300;
+    color: var(--navy);
+    line-height: 1.1;
+  }
+
+  .page-title em { font-style: italic; color: var(--plum); }
+
+  .page-subtitle {
+    font-size: 13px;
+    color: var(--plum);
+    margin-top: 6px;
+    font-weight: 300;
+  }
+
+  /* BUTTONS */
+  .btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: 'Raleway', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+
+  .btn-primary { background: var(--navy); color: white; }
+  .btn-primary:hover { background: var(--plum); }
+  .btn-secondary { background: white; color: var(--navy); border: 1.5px solid var(--petal); }
+  .btn-secondary:hover { border-color: var(--plum); color: var(--plum); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-danger { background: transparent; color: var(--danger); border: 1.5px solid var(--danger); }
+  .btn-sm { padding: 7px 14px; font-size: 10px; }
+
+  /* CARDS */
+  .card {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--plum);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .stat-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px;
+    font-weight: 300;
+    color: var(--navy);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-sub {
+    font-size: 11px;
+    color: #aaa;
+  }
+
+  /* POST COMPOSER */
+  .composer {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+
+  .composer-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .composer-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--navy);
+  }
+
+  .composer-body { padding: 24px; }
+
+  .composer-textarea {
+    width: 100%;
+    min-height: 140px;
+    border: 1.5px solid var(--petal);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: 'Raleway', sans-serif;
+    font-size: 14px;
+    color: var(--navy);
+    line-height: 1.7;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+    background: var(--cream);
+  }
+
+  .composer-textarea:focus { border-color: var(--plum); background: white; }
+
+  .composer-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .platform-toggle {
+    display: flex;
+    gap: 8px;
+  }
+
+  .platform-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 100px;
+    border: 1.5px solid var(--petal);
+    background: white;
+    font-family: 'Raleway', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: #aaa;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .platform-btn.active {
+    border-color: var(--navy);
+    color: var(--navy);
+    background: rgba(39,48,77,0.05);
+  }
+
+  .platform-btn .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ddd;
+  }
+
+  .platform-btn.active .dot { background: var(--mauve); }
+
+  .post-type-select {
+    padding: 8px 12px;
+    border: 1.5px solid var(--petal);
+    border-radius: 8px;
+    font-family: 'Raleway', sans-serif;
+    font-size: 12px;
+    color: var(--navy);
+    background: white;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .date-input {
+    padding: 8px 12px;
+    border: 1.5px solid var(--petal);
+    border-radius: 8px;
+    font-family: 'Raleway', sans-serif;
+    font-size: 12px;
+    color: var(--navy);
+    background: white;
+    outline: none;
+  }
+
+  .media-upload-area {
+    margin-top: 16px;
+    border: 1.5px dashed var(--petal);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--cream);
+  }
+
+  .media-upload-area:hover { border-color: var(--plum); background: white; }
+
+  .media-upload-area p {
+    font-size: 12px;
+    color: var(--plum);
+    margin-top: 6px;
+  }
+
+  .media-upload-area input { display: none; }
+
+  .media-preview {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .media-thumb {
+    width: 72px;
+    height: 72px;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 1px solid var(--petal);
+  }
+
+  .composer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .char-count {
+    font-size: 11px;
+    color: #aaa;
+  }
+
+  /* POST LIST */
+  .posts-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .post-card {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    padding: 20px 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    transition: box-shadow 0.2s;
+  }
+
+  .post-card:hover { box-shadow: var(--shadow-lg); }
+
+  .post-status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-top: 5px;
+    min-width: 10px;
+  }
+
+  .dot-draft { background: #ddd; }
+  .dot-scheduled { background: var(--warning); }
+  .dot-published { background: var(--success); }
+
+  .post-body { flex: 1; min-width: 0; }
+
+  .post-caption {
+    font-size: 14px;
+    color: var(--navy);
+    line-height: 1.6;
+    margin-bottom: 10px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .post-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .post-tag {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-weight: 500;
+  }
+
+  .tag-draft { background: rgba(200,200,200,0.2); color: #999; }
+  .tag-scheduled { background: rgba(196,168,106,0.15); color: var(--warning); }
+  .tag-scheduled_meta { background: rgba(46,125,126,0.12); color: var(--teal); }
+  .tag-published { background: rgba(122,158,126,0.15); color: var(--success); }
+  .tag-ig { background: rgba(184,125,128,0.12); color: var(--mauve); }
+  .tag-fb { background: rgba(39,48,77,0.08); color: var(--navy); }
+  .tag-both { background: rgba(113,99,134,0.1); color: var(--plum); }
+
+  .post-date {
+    font-size: 11px;
+    color: #bbb;
+  }
+
+  .post-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    min-width: fit-content;
+  }
+
+  /* CALENDAR */
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+
+  .cal-header {
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--plum);
+    padding: 8px 0;
+    font-weight: 500;
+  }
+
+  .cal-day {
+    background: white;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    min-height: 90px;
+    padding: 8px;
+    transition: box-shadow 0.2s;
+  }
+
+  .cal-day:hover { box-shadow: var(--shadow); }
+
+  .cal-day-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    font-weight: 300;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+
+  .cal-day.today { border-color: var(--mauve); }
+  .cal-day.today .cal-day-num { color: var(--mauve); font-weight: 500; }
+  .cal-day.empty { background: transparent; border-color: transparent; }
+
+  .cal-post-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    margin: 2px;
+  }
+
+  /* SETTINGS */
+  .settings-section {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+
+  .settings-section-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .settings-section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--navy);
+  }
+
+  .settings-section-body { padding: 24px; }
+
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(232,196,193,0.3);
+  }
+
+  .settings-row:last-child { border-bottom: none; }
+
+  .settings-key {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--navy);
+    margin-bottom: 2px;
+  }
+
+  .settings-val {
+    font-size: 11px;
+    color: #aaa;
+    font-family: monospace;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    background: var(--navy);
+    color: white;
+    padding: 14px 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 999;
+    max-width: 320px;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--danger); }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(39,48,77,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    display: none;
+    padding: 24px;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: white;
+    border-radius: 16px;
+    padding: 36px;
+    max-width: 560px;
+    width: 100%;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .modal-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 24px;
+    font-weight: 400;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+
+  .modal-subtitle {
+    font-size: 13px;
+    color: var(--plum);
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+  }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 60px 24px;
+    color: var(--plum);
+  }
+
+  .empty-state-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+
+  .empty-state-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+
+  .empty-state-text { font-size: 13px; line-height: 1.6; }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .tab {
+    padding: 12px 20px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #aaa;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+  }
+
+  .tab:hover { color: var(--plum); }
+  .tab.active { color: var(--navy); border-bottom-color: var(--mauve); }
+
+  /* API STATUS */
+  .api-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-weight: 500;
+  }
+
+  .api-status.connected { background: rgba(122,158,126,0.12); color: var(--success); }
+  .api-status.disconnected { background: rgba(196,120,120,0.12); color: var(--danger); }
+  .api-status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  @media (max-width: 900px) {
+    .sidebar { width: 200px; min-width: 200px; }
+    .main { margin-left: 200px; max-width: calc(100% - 200px); padding: 24px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setupScreen">
+  <div class="setup-card">
+    <div class="setup-brand">Blue Moon Wellness Spa</div>
+    <h1 class="setup-title">Welcome to your<br><em>Content Dashboard</em></h1>
+    <p class="setup-subtitle">Enter your Meta credentials to connect Instagram and Facebook. These are stored only in your browser and never sent anywhere.</p>
+
+    <div class="form-group">
+      <label class="form-label">App ID</label>
+      <input class="form-input" id="s_appId" type="text" placeholder="Your Meta App ID">
+    </div>
+    <div class="form-group">
+      <label class="form-label">App Secret</label>
+      <input class="form-input" id="s_appSecret" type="password" placeholder="Your Meta App Secret">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Access Token</label>
+      <input class="form-input" id="s_token" type="password" placeholder="Your long-lived access token">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Facebook Page ID</label>
+      <input class="form-input" id="s_pageId" type="text" placeholder="Your Facebook Page ID">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Instagram Account ID</label>
+      <input class="form-input" id="s_igId" type="text" placeholder="Your Instagram Account ID">
+    </div>
+
+    <button class="setup-btn" id="connectBtn">Connect Blue Moon</button>
+    <p class="setup-note">Stored locally in your browser only. You can update these anytime in Settings.</p>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-label">Blue Moon</div>
+        <div class="sidebar-brand-name">Content<br><em>Dashboard</em></div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Manage</div>
+        <div class="nav-item active" onclick="showPage('compose')">
+          <span class="nav-icon">✦</span> Compose
+        </div>
+        <div class="nav-item" onclick="showPage('import')">
+          <span class="nav-icon">⊕</span> Import Plan
+        </div>
+        <div class="nav-item" onclick="showPage('queue')">
+          <span class="nav-icon">◈</span> Queue
+        </div>
+        <div class="nav-item" onclick="showPage('calendar')">
+          <span class="nav-icon">◻</span> Calendar
+        </div>
+      </div>
+
+      <div class="nav-section" style="margin-top: 16px;">
+        <div class="nav-label">Account</div>
+        <div class="nav-item" onclick="showPage('settings')">
+          <span class="nav-icon">◎</span> Settings
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-footer-text">Blue Moon Wellness Spa<br>@bluemoonwellnessspa</div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+
+      <!-- COMPOSE PAGE -->
+      <div class="page active" id="page-compose">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">New <em>Post</em></h1>
+            <p class="page-subtitle">Draft, schedule, and publish to Instagram and Facebook.</p>
+          </div>
+        </div>
+
+        <div class="composer">
+          <div class="composer-header">
+            <span class="composer-title">Write your caption</span>
+            <div id="apiStatusBadge" class="api-status disconnected">
+              <span class="api-status-dot"></span> Not connected
+            </div>
+          </div>
+          <div class="composer-body">
+            <textarea class="composer-textarea" id="captionInput" placeholder="Write your caption here..." oninput="updateCharCount()"></textarea>
+
+            <div class="composer-row">
+              <div class="platform-toggle">
+                <button class="platform-btn active" id="btn-ig" onclick="togglePlatform('ig')">
+                  <span class="dot"></span> Instagram
+                </button>
+                <button class="platform-btn active" id="btn-fb" onclick="togglePlatform('fb')">
+                  <span class="dot"></span> Facebook
+                </button>
+              </div>
+
+              <select class="post-type-select" id="postType">
+                <option value="feed">Feed Post</option>
+                <option value="reel">Reel</option>
+                <option value="story">Story</option>
+              </select>
+
+              <input type="datetime-local" class="date-input" id="scheduleDate">
+            </div>
+
+            <div class="media-upload-area" onclick="document.getElementById('mediaFile').click()">
+              <div style="font-size: 24px;">⊕</div>
+              <p>Tap to attach image from Canva export</p>
+              <p style="color:#bbb; font-size:11px; margin-top:4px;">JPG, PNG · preview only — use URL below for Instagram</p>
+              <input type="file" id="mediaFile" accept="image/*" onchange="handleMedia(event)">
+            </div>
+            <div class="media-preview" id="mediaPreview"></div>
+            <div class="field-group" style="margin-top:12px;">
+              <input type="url" id="imageUrlInput" class="form-input" placeholder="Public image URL (required for Instagram — paste Canva share link or CDN URL)" style="font-size:12px; padding:10px 14px;">
+            </div>
+
+            <div class="composer-actions">
+              <span class="char-count" id="charCount">0 characters</span>
+              <div style="display:flex; gap:10px;">
+                <button class="btn btn-secondary" onclick="saveDraft()">Save Draft</button>
+                <button class="btn btn-primary" onclick="schedulePost()">Schedule Post</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUEUE PAGE -->
+      <div class="page" id="page-queue">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Post <em>Queue</em></h1>
+            <p class="page-subtitle">All your drafts and scheduled posts in one place.</p>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-secondary" onclick="debugSchedule()">Debug</button>
+            <button class="btn btn-success" onclick="scheduleAll()">Schedule All to Meta</button>
+            <button class="btn btn-primary" onclick="showPage('compose')">+ New Post</button>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active" onclick="filterPosts('all', this)">All</div>
+          <div class="tab" onclick="filterPosts('draft', this)">Drafts</div>
+          <div class="tab" onclick="filterPosts('scheduled', this)">Scheduled</div>
+          <div class="tab" onclick="filterPosts('published', this)">Published</div>
+        </div>
+
+        <div class="posts-list" id="postsList">
+          <div class="empty-state">
+            <div class="empty-state-icon">◈</div>
+            <div class="empty-state-title">No posts yet</div>
+            <p class="empty-state-text">Write your first post in the Compose tab and it will appear here.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CALENDAR PAGE -->
+      <div class="page" id="page-calendar">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Content <em>Calendar</em></h1>
+            <p class="page-subtitle">Your scheduled posts at a glance.</p>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <button class="btn btn-secondary btn-sm" onclick="prevMonth()">← Prev</button>
+            <span id="calMonthLabel" style="font-family:'Cormorant Garamond',serif; font-size:18px; color:var(--navy);"></span>
+            <button class="btn btn-secondary btn-sm" onclick="nextMonth()">Next →</button>
+          </div>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </div>
+
+      <!-- IMPORT PAGE -->
+      <div class="page" id="page-import">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Import <em>Content Plan</em></h1>
+            <p class="page-subtitle">Upload your HTML content plan and all posts will be added to your queue for review.</p>
+          </div>
+        </div>
+
+        <div class="composer" style="margin-bottom:24px;">
+          <div class="composer-header">
+            <span class="composer-title">Upload content plan</span>
+          </div>
+          <div class="composer-body">
+            <div class="media-upload-area" onclick="document.getElementById('importFile').click()" id="importDropZone">
+              <div style="font-size:32px;">⊕</div>
+              <p style="font-size:14px; font-weight:500; margin-top:8px;">Tap to upload your HTML content plan</p>
+              <p style="color:#bbb; font-size:12px; margin-top:4px;">Generated by your Claude project · HTML format</p>
+              <input type="file" id="importFile" accept=".html" onchange="handleImport(event)" style="display:none;">
+            </div>
+            <div id="importPreview" style="margin-top:20px; display:none;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+                <div>
+                  <div style="font-size:14px; font-weight:500; color:var(--navy);" id="importSummary"></div>
+                  <div style="font-size:12px; color:var(--plum); margin-top:4px;" id="importSubSummary"></div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                  <button class="btn btn-secondary" onclick="clearImport()">Clear</button>
+                  <button class="btn btn-primary" onclick="confirmImport()">Add to Queue</button>
+                </div>
+              </div>
+              <div id="importList" style="display:flex; flex-direction:column; gap:8px; max-height:480px; overflow-y:auto;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:24px;">
+          <div style="font-family:'Cormorant Garamond',serif; font-size:16px; color:var(--navy); margin-bottom:12px;">How it works</div>
+          <div style="font-size:13px; color:var(--plum); line-height:1.8;">
+            1. Generate your monthly content plan in your Claude project as usual.<br>
+            2. Export or save it as an HTML file.<br>
+            3. Upload it here — all posts are read and added to your queue as drafts.<br>
+            4. Review each post, make any edits, then approve to schedule.<br>
+            5. YNTP broadcast drops are flagged as manual — they appear as reminders only.
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS PAGE -->
+      <div class="page" id="page-settings">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Account <em>Settings</em></h1>
+            <p class="page-subtitle">Manage your Meta credentials and connection.</p>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-header">
+            <div class="settings-section-title">Meta API Credentials</div>
+          </div>
+          <div class="settings-section-body" id="credentialsDisplay"></div>
+        </div>
+
+        <button class="btn btn-danger" onclick="resetCredentials()">Disconnect & Reset</button>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title">Edit Post</div>
+    <div class="modal-subtitle">Make changes to your caption or schedule.</div>
+    <textarea class="composer-textarea" id="editCaption" style="min-height:120px;"></textarea>
+    <div style="margin-top:12px; display:flex; gap:12px;">
+      <input type="datetime-local" class="date-input" id="editDate" style="flex:1;">
+      <select class="post-type-select" id="editType">
+        <option value="feed">Feed Post</option>
+        <option value="reel">Reel</option>
+        <option value="story">Story</option>
+      </select>
+    </div>
+    <div style="margin-top:12px;">
+      <input type="url" id="editImageUrl" class="form-input" placeholder="Public image URL (required for Instagram)" style="font-size:12px; padding:10px 14px;">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─── Meta Graph API base ────────────────────────────────────────────────────
+  const GRAPH = 'https://graph.facebook.com/v21.0';
+
+  async function graphPost(path, params) {
+    const res = await fetch(GRAPH + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(params)
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+    return data;
+  }
+
+  async function graphPostFile(path, formData) {
+    const res = await fetch(GRAPH + path, { method: 'POST', body: formData });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+    return data;
+  }
+
+  // ─── STATE ──────────────────────────────────────────────────────────────────
+  let posts = JSON.parse(localStorage.getItem('bm_posts') || '[]');
+  let creds = JSON.parse(localStorage.getItem('bm_creds') || 'null');
+  let platforms = { ig: true, fb: true };
+  let currentFilter = 'all';
+  let editingId = null;
+  let calYear, calMonth;
+
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('connectBtn').addEventListener('click', saveCredentials);
+    init();
+  });
+
+  // INIT
+  function init() {
+    if (creds) {
+      document.getElementById('setupScreen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      updateApiStatus();
+      renderPosts();
+      renderCalendar();
+      renderCredentials();
+      setDefaultDate();
+    }
+  }
+
+  function setDefaultDate() {
+    const d = new Date();
+    d.setHours(9, 0, 0, 0);
+    d.setDate(d.getDate() + 1);
+    document.getElementById('scheduleDate').value = d.toISOString().slice(0,16);
+  }
+
+  // CREDENTIALS
+  function saveCredentials() {
+    const appId = document.getElementById('s_appId').value.trim();
+    const appSecret = document.getElementById('s_appSecret').value.trim();
+    const token = document.getElementById('s_token').value.trim();
+    const pageId = document.getElementById('s_pageId').value.trim();
+    const igId = document.getElementById('s_igId').value.trim();
+
+    if (!appId || !token || !pageId || !igId) {
+      showToast('Please fill in all required fields.', 'error');
+      return;
+    }
+
+    creds = { appId, appSecret, token, pageId, igId };
+    localStorage.setItem('bm_creds', JSON.stringify(creds));
+
+    document.getElementById('setupScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    updateApiStatus();
+    renderPosts();
+    renderCalendar();
+    renderCredentials();
+    setDefaultDate();
+    showToast('Blue Moon connected successfully.', 'success');
+  }
+
+  function resetCredentials() {
+    if (!confirm('This will disconnect your Meta accounts and clear all credentials. Posts will remain. Continue?')) return;
+    localStorage.removeItem('bm_creds');
+    creds = null;
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('setupScreen').style.display = 'flex';
+  }
+
+  function updateApiStatus() {
+    const badge = document.getElementById('apiStatusBadge');
+    if (creds && creds.token) {
+      badge.className = 'api-status connected';
+      badge.innerHTML = '<span class="api-status-dot"></span> Connected';
+    } else {
+      badge.className = 'api-status disconnected';
+      badge.innerHTML = '<span class="api-status-dot"></span> Not connected';
+    }
+  }
+
+  function renderCredentials() {
+    if (!creds) return;
+    const el = document.getElementById('credentialsDisplay');
+    el.innerHTML = `
+      <div class="settings-row">
+        <div><div class="settings-key">App ID</div><div class="settings-val">${creds.appId}</div></div>
+        <span class="api-status connected"><span class="api-status-dot"></span> Saved</span>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-key">App Secret</div><div class="settings-val">••••••••••••</div></div>
+        <span class="api-status connected"><span class="api-status-dot"></span> Saved</span>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-key">Access Token</div><div class="settings-val">${creds.token.slice(0,20)}••••••••</div></div>
+        <span class="api-status connected"><span class="api-status-dot"></span> Saved</span>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-key">Facebook Page ID</div><div class="settings-val">${creds.pageId}</div></div>
+        <span class="api-status connected"><span class="api-status-dot"></span> Saved</span>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-key">Instagram Account ID</div><div class="settings-val">${creds.igId}</div></div>
+        <span class="api-status connected"><span class="api-status-dot"></span> Saved</span>
+      </div>
+    `;
+  }
+
+  // NAVIGATION
+  function showPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    event.currentTarget.classList.add('active');
+    if (page === 'queue') renderPosts();
+    if (page === 'calendar') renderCalendar();
+  }
+
+  // PLATFORM TOGGLE
+  function togglePlatform(p) {
+    platforms[p] = !platforms[p];
+    document.getElementById('btn-' + p).classList.toggle('active', platforms[p]);
+  }
+
+  // CHAR COUNT
+  function updateCharCount() {
+    const len = document.getElementById('captionInput').value.length;
+    document.getElementById('charCount').textContent = len + ' characters';
+  }
+
+  // MEDIA
+  let mediaFiles = [];
+  let mediaBase64 = null;
+
+  function handleMedia(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    mediaFiles = [file];
+    const preview = document.getElementById('mediaPreview');
+    preview.innerHTML = '';
+
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        mediaBase64 = ev.target.result;
+        const img = document.createElement('img');
+        img.className = 'media-thumb';
+        img.src = mediaBase64;
+        preview.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      mediaBase64 = null;
+      preview.innerHTML = `<div style="padding:8px 12px; background:var(--cream); border-radius:6px; font-size:12px; color:var(--plum);">📹 ${file.name}</div>`;
+    }
+  }
+
+  // SAVE DRAFT
+  function saveDraft() {
+    const caption = document.getElementById('captionInput').value.trim();
+    if (!caption) { showToast('Please write a caption first.', 'error'); return; }
+    const post = {
+      id: Date.now(),
+      caption,
+      platforms: { ...platforms },
+      type: document.getElementById('postType').value,
+      date: document.getElementById('scheduleDate').value,
+      status: 'draft',
+      image: mediaBase64 || null,
+      imageUrl: document.getElementById('imageUrlInput').value.trim() || null,
+      created: new Date().toISOString()
+    };
+    posts.unshift(post);
+    savePosts();
+    clearComposer();
+    showToast('Draft saved.', 'success');
+  }
+
+  // SCHEDULE POST
+  function schedulePost() {
+    const caption = document.getElementById('captionInput').value.trim();
+    if (!caption) { showToast('Please write a caption first.', 'error'); return; }
+    const date = document.getElementById('scheduleDate').value;
+    if (!date) { showToast('Please select a date and time.', 'error'); return; }
+    if (!platforms.ig && !platforms.fb) { showToast('Please select at least one platform.', 'error'); return; }
+
+    const post = {
+      id: Date.now(),
+      caption,
+      platforms: { ...platforms },
+      type: document.getElementById('postType').value,
+      date,
+      status: 'draft',
+      image: mediaBase64 || null,
+      imageUrl: document.getElementById('imageUrlInput').value.trim() || null,
+      created: new Date().toISOString()
+    };
+    posts.unshift(post);
+    savePosts();
+    clearComposer();
+    renderCalendar();
+
+    const d = new Date(date);
+    const formatted = d.toLocaleDateString('en-AU', { weekday:'short', day:'numeric', month:'short' }) + ' at ' + d.toLocaleTimeString('en-AU', { hour:'2-digit', minute:'2-digit' });
+    showToast(`Draft saved — click "Schedule All to Meta" to push to Business Suite`, 'success');
+  }
+
+  function clearComposer() {
+    document.getElementById('captionInput').value = '';
+    document.getElementById('mediaPreview').innerHTML = '';
+    document.getElementById('imageUrlInput').value = '';
+    mediaFiles = [];
+    mediaBase64 = null;
+    updateCharCount();
+    setDefaultDate();
+  }
+
+  // RENDER POSTS
+  function renderPosts() {
+    const list = document.getElementById('postsList');
+    let filtered = currentFilter === 'all' ? posts
+      : currentFilter === 'scheduled' ? posts.filter(p => p.status === 'scheduled' || p.status === 'scheduled_meta')
+      : posts.filter(p => p.status === currentFilter);
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<div class="empty-state">
+        <div class="empty-state-icon">◈</div>
+        <div class="empty-state-title">No ${currentFilter === 'all' ? '' : currentFilter} posts yet</div>
+        <p class="empty-state-text">Write your first post in the Compose tab.</p>
+      </div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map(post => {
+      const platformTag = post.platforms.ig && post.platforms.fb ? `<span class="post-tag tag-both">IG + FB</span>`
+        : post.platforms.ig ? `<span class="post-tag tag-ig">Instagram</span>`
+        : `<span class="post-tag tag-fb">Facebook</span>`;
+
+      const statusLabel = { draft:'draft', scheduled:'scheduled', scheduled_meta:'in Business Suite', published:'published' }[post.status] || post.status;
+      const statusTag = `<span class="post-tag tag-${post.status}">${statusLabel}</span>`;
+
+      const dateStr = post.date ? new Date(post.date).toLocaleDateString('en-AU', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+
+      return `<div class="post-card">
+        <div class="post-status-dot dot-${post.isYNTP ? 'draft' : post.status}"></div>
+        ${post.image ? `<img src="${post.image}" style="width:56px; height:56px; border-radius:6px; object-fit:cover; border:1px solid var(--petal); flex-shrink:0;">` : ''}
+        <div class="post-body">
+          <div class="post-caption">${escHtml(post.caption)}</div>
+          <div class="post-meta">
+            ${post.isYNTP ? `<span class="post-tag" style="background:rgba(123,94,167,0.1);color:var(--plum);">YNTP · Manual</span>` : statusTag}
+            ${post.isYNTP ? '' : platformTag}
+            <span class="post-tag" style="background:rgba(113,99,134,0.08);color:var(--plum);">${post.type}</span>
+            ${dateStr ? `<span class="post-date">${dateStr}</span>` : ''}
+          </div>
+        </div>
+        <div class="post-actions">
+          ${!post.isYNTP && post.status !== 'published' && post.status !== 'scheduled_meta' ? `<button class="btn btn-success btn-sm" onclick="publishPost(${post.id})">Publish</button>` : ''}
+          <button class="btn btn-secondary btn-sm" onclick="editPost(${post.id})">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deletePost(${post.id})">Delete</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function filterPosts(filter, el) {
+    currentFilter = filter;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    renderPosts();
+  }
+
+  // EDIT
+  function editPost(id) {
+    const post = posts.find(p => p.id === id);
+    if (!post) return;
+    editingId = id;
+    document.getElementById('editCaption').value = post.caption;
+    document.getElementById('editDate').value = post.date || '';
+    document.getElementById('editType').value = post.type || 'feed';
+    document.getElementById('editImageUrl').value = post.imageUrl || '';
+    document.getElementById('editModal').classList.add('open');
+  }
+
+  function saveEdit() {
+    const post = posts.find(p => p.id === editingId);
+    if (!post) return;
+    post.caption = document.getElementById('editCaption').value.trim();
+    post.date = document.getElementById('editDate').value;
+    post.type = document.getElementById('editType').value;
+    post.imageUrl = document.getElementById('editImageUrl').value.trim() || null;
+    savePosts();
+    closeModal();
+    renderPosts();
+    renderCalendar();
+    showToast('Post updated.', 'success');
+  }
+
+  function closeModal() {
+    document.getElementById('editModal').classList.remove('open');
+    editingId = null;
+  }
+
+  // ─── PUBLISH / SCHEDULE ───────────────────────────────────────────────────
+
+  async function publishPost(id) {
+    const post = posts.find(p => p.id === id);
+    if (!post) return;
+    if (!creds?.token) { showToast('No access token found. Check Settings.', 'error'); return; }
+
+    const platformList = [];
+    if (post.platforms.ig) platformList.push('Instagram');
+    if (post.platforms.fb) platformList.push('Facebook');
+    const platformStr = platformList.join(' + ');
+
+    // Scheduled = more than 10 min in the future (Meta minimum)
+    const schedTs = post.date ? Math.floor(new Date(post.date).getTime() / 1000) : null;
+    const nowTs = Math.floor(Date.now() / 1000);
+    const isScheduled = schedTs && schedTs > nowTs + 600;
+    const actionLabel = isScheduled ? 'Schedule in Meta Business Suite' : 'Publish now';
+
+    if (!confirm(`${actionLabel} to ${platformStr}?\n\n"${post.caption.slice(0, 100)}${post.caption.length > 100 ? '…' : ''}"`)) return;
+    showToast(isScheduled ? 'Sending to Business Suite…' : 'Publishing…', '');
+
+    const results = [];
+
+    // ── Facebook ────────────────────────────────────────────────────────────
+    if (post.platforms.fb && creds.pageId) {
+      try {
+        let data;
+        if (post.imageUrl) {
+          // Photo post via URL
+          const params = {
+            access_token: creds.token,
+            caption: post.caption,
+            url: post.imageUrl,
+            published: isScheduled ? 'false' : 'true',
+          };
+          if (isScheduled) params.scheduled_publish_time = schedTs;
+          data = await graphPost(`/${creds.pageId}/photos`, params);
+        } else if (mediaFiles[0] && !isScheduled) {
+          // Direct file upload (publish now only — scheduling requires a URL)
+          const fd = new FormData();
+          fd.append('access_token', creds.token);
+          fd.append('caption', post.caption);
+          fd.append('source', mediaFiles[0]);
+          fd.append('published', 'true');
+          data = await graphPostFile(`/${creds.pageId}/photos`, fd);
+        } else {
+          // Text post
+          const params = {
+            access_token: creds.token,
+            message: post.caption,
+            published: isScheduled ? 'false' : 'true',
+          };
+          if (isScheduled) params.scheduled_publish_time = schedTs;
+          data = await graphPost(`/${creds.pageId}/feed`, params);
+        }
+        results.push({ platform: 'Facebook', success: true, id: data.id || data.post_id });
+      } catch (e) {
+        results.push({ platform: 'Facebook', success: false, error: e.message });
+      }
+    }
+
+    // ── Instagram ───────────────────────────────────────────────────────────
+    if (post.platforms.ig && creds.igId) {
+      if (!post.imageUrl) {
+        results.push({ platform: 'Instagram', success: false, error: 'Instagram requires a public image URL — add one in Edit.' });
+      } else {
+        try {
+          const containerParams = {
+            access_token: creds.token,
+            caption: post.caption,
+            image_url: post.imageUrl,
+          };
+          if (isScheduled) {
+            containerParams.published = 'false';
+            containerParams.scheduled_publish_time = schedTs;
+          }
+          const container = await graphPost(`/${creds.igId}/media`, containerParams);
+
+          if (isScheduled) {
+            results.push({ platform: 'Instagram', success: true });
+          } else {
+            await new Promise(r => setTimeout(r, 3000));
+            const published = await graphPost(`/${creds.igId}/media_publish`, {
+              access_token: creds.token,
+              creation_id: container.id,
+            });
+            results.push({ platform: 'Instagram', success: true, id: published.id });
+          }
+        } catch (e) {
+          results.push({ platform: 'Instagram', success: false, error: e.message });
+        }
+      }
+    }
+
+    const allOk = results.every(r => r.success);
+    const anyOk = results.some(r => r.success);
+    const errors = results.filter(r => !r.success).map(r => `${r.platform}: ${r.error}`).join(' · ');
+
+    if (allOk || anyOk) {
+      post.status = isScheduled ? 'scheduled_meta' : 'published';
+      post.publishedAt = new Date().toISOString();
+      savePosts(); renderPosts(); renderCalendar();
+      if (allOk) {
+        showToast(isScheduled ? `Scheduled in Meta Business Suite · ${platformStr}` : `Published to ${platformStr}`, 'success');
+      } else {
+        showToast(`Partial success. ${errors}`, 'error');
+      }
+    } else {
+      showToast(`Failed: ${errors}`, 'error');
+    }
+  }
+
+  async function debugSchedule() {
+    if (!creds?.token) { showToast('Not connected.', 'error'); return; }
+    try {
+      const data = await graphPost(`/${creds.pageId}`, { access_token: creds.token, fields: 'name,id' });
+      alert(`Connected to page: ${data.name} (${data.id})`);
+    } catch(e) {
+      alert('Connection error: ' + e.message);
+    }
+  }
+
+  // SCHEDULE ALL — sends all future-dated drafts to Meta Business Suite
+  async function scheduleAll() {
+    const nowTs = Math.floor(Date.now() / 1000);
+    const eligible = posts.filter(p =>
+      !p.isYNTP &&
+      p.status === 'draft' &&
+      p.date &&
+      Math.floor(new Date(p.date).getTime() / 1000) > nowTs + 600
+    );
+
+    if (eligible.length === 0) {
+      showToast(`No schedulable drafts found. Posts need a date at least 10 min in the future.`, 'error');
+      return;
+    }
+
+    if (!confirm(`Schedule ${eligible.length} posts to Meta Business Suite?\n\nThey will appear in Business Suite as scheduled posts.`)) return;
+    showToast(`Scheduling ${eligible.length} posts…`, '');
+
+    let success = 0, failed = 0;
+
+    for (const post of eligible) {
+      const schedTs = Math.floor(new Date(post.date).getTime() / 1000);
+      const results = [];
+
+      // Facebook
+      if (post.platforms.fb && creds.pageId) {
+        try {
+          const params = {
+            access_token: creds.token,
+            published: 'false',
+            scheduled_publish_time: schedTs,
+          };
+          if (post.imageUrl) {
+            params.caption = post.caption;
+            params.url = post.imageUrl;
+            await graphPost(`/${creds.pageId}/photos`, params);
+          } else {
+            params.message = post.caption;
+            await graphPost(`/${creds.pageId}/feed`, params);
+          }
+          results.push({ ok: true });
+        } catch(e) {
+          results.push({ ok: false, err: 'FB: ' + e.message });
+        }
+      }
+
+      // Instagram
+      if (post.platforms.ig && creds.igId) {
+        if (!post.imageUrl) {
+          results.push({ ok: false, err: 'IG: no public image URL' });
+        } else {
+          try {
+            await graphPost(`/${creds.igId}/media`, {
+              access_token: creds.token,
+              caption: post.caption,
+              image_url: post.imageUrl,
+              published: 'false',
+              scheduled_publish_time: schedTs,
+            });
+            results.push({ ok: true });
+          } catch(e) {
+            results.push({ ok: false, err: 'IG: ' + e.message });
+          }
+        }
+      }
+
+      if (results.length > 0 && results.some(r => r.ok)) {
+        post.status = 'scheduled_meta';
+        post.publishedAt = new Date().toISOString();
+        success++;
+      } else {
+        failed++;
+      }
+
+      await new Promise(r => setTimeout(r, 400));
+    }
+
+    savePosts(); renderPosts(); renderCalendar();
+    if (failed === 0) {
+      showToast(`All ${success} posts scheduled in Meta Business Suite.`, 'success');
+    } else {
+      showToast(`${success} scheduled · ${failed} failed (check posts missing image URLs).`, 'error');
+    }
+  }
+  function deletePost(id) {
+    if (!confirm('Delete this post?')) return;
+    posts = posts.filter(p => p.id !== id);
+    savePosts();
+    renderPosts();
+    renderCalendar();
+    showToast('Post deleted.');
+  }
+
+  // SAVE — localStorage only (base64 images stripped to avoid quota limits)
+  function savePosts() {
+    const forStorage = posts.map(p => {
+      const { image, ...rest } = p;
+      return image ? { ...rest, hasImage: true } : rest;
+    });
+    try {
+      localStorage.setItem('bm_posts', JSON.stringify(forStorage));
+    } catch(e) {
+      console.warn('localStorage quota exceeded — clear some old posts');
+    }
+  }
+
+  // CALENDAR
+  function renderCalendar() {
+    const grid = document.getElementById('calendarGrid');
+    const label = document.getElementById('calMonthLabel');
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    label.textContent = monthNames[calMonth] + ' ' + calYear;
+
+    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    let html = days.map(d => `<div class="cal-header">${d}</div>`).join('');
+
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const today = new Date();
+
+    for (let i = 0; i < firstDay; i++) html += `<div class="cal-day empty"></div>`;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const isToday = today.getDate() === d && today.getMonth() === calMonth && today.getFullYear() === calYear;
+      const dayPosts = posts.filter(p => {
+        if (!p.date) return false;
+        const pd = new Date(p.date);
+        return pd.getDate() === d && pd.getMonth() === calMonth && pd.getFullYear() === calYear;
+      });
+
+      const dots = dayPosts.map(p => {
+        const col = p.status === 'published' ? 'var(--success)' : p.status === 'scheduled' ? 'var(--warning)' : '#ddd';
+        return `<span class="cal-post-dot" style="background:${col};" title="${p.caption.slice(0,40)}"></span>`;
+      }).join('');
+
+      html += `<div class="cal-day${isToday ? ' today' : ''}">
+        <div class="cal-day-num">${d}</div>
+        <div>${dots}</div>
+      </div>`;
+    }
+
+    grid.innerHTML = html;
+  }
+
+  function prevMonth() {
+    calMonth--;
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+    renderCalendar();
+  }
+
+  function nextMonth() {
+    calMonth++;
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderCalendar();
+  }
+
+  // TOAST
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (type ? ' ' + type : '');
+    setTimeout(() => t.className = 'toast', 3000);
+  }
+
+  // IMPORT
+  let importedPosts = [];
+
+  function handleImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const html = ev.target.result;
+      importedPosts = parseContentPlan(html);
+      renderImportPreview();
+    };
+    reader.readAsText(file);
+  }
+
+  function parseContentPlan(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const results = [];
+
+    // Parse regular posts (meta-line class)
+    const metaLines = doc.querySelectorAll('.meta-line');
+    metaLines.forEach(metaEl => {
+      const metaText = metaEl.textContent.trim();
+      const meta = parseMetaLine(metaText);
+      if (!meta) return;
+
+      // Caption text is in the sibling .caption-text element
+      const captionBox = metaEl.closest('.caption-box');
+      if (!captionBox) return;
+      const captionEl = captionBox.querySelector('.caption-text');
+      const hashtagEl = captionBox.querySelector('.caption-hashtags');
+      let caption = captionEl ? captionEl.textContent.trim() : '';
+      if (hashtagEl) caption += '\n\n' + hashtagEl.textContent.trim();
+
+      results.push({
+        id: Date.now() + Math.random(),
+        caption: caption.trim(),
+        platforms: {
+          ig: meta.platform === 'Instagram' || meta.platform === 'Both',
+          fb: meta.platform === 'Facebook' || meta.platform === 'Both'
+        },
+        type: normaliseType(meta.type),
+        date: buildDateString(meta.date, meta.time),
+        status: 'draft',
+        isYNTP: false,
+        created: new Date().toISOString()
+      });
+    });
+
+    // Parse YNTP drops (yntp-meta class)
+    const ytpMetas = doc.querySelectorAll('.yntp-meta');
+    ytpMetas.forEach(metaEl => {
+      const metaText = metaEl.textContent.trim();
+      const meta = parseMetaLine(metaText);
+      if (!meta) return;
+
+      const ytpBox = metaEl.closest('.yntp-box');
+      if (!ytpBox) return;
+      const textEl = ytpBox.querySelector('.yntp-text');
+      const headerEl = ytpBox.querySelector('.yntp-header');
+      const caption = textEl ? textEl.textContent.trim() : '';
+      const label = headerEl ? headerEl.textContent.trim() : 'YNTP Drop';
+
+      results.push({
+        id: Date.now() + Math.random(),
+        caption: caption.trim(),
+        platforms: { ig: false, fb: false },
+        type: 'broadcast',
+        date: buildDateString(meta.date, meta.time),
+        status: 'draft',
+        isYNTP: true,
+        ytpLabel: label,
+        created: new Date().toISOString()
+      });
+    });
+
+    // Sort by date ascending
+    results.sort((a, b) => new Date(a.date) - new Date(b.date));
+    return results;
+  }
+
+  function parseMetaLine(text) {
+    // Format: [DATE: 17 May 2026 | TIME: 08:00pm | PLATFORM: Instagram | TYPE: Feed Post]
+    const clean = text.replace(/[\[\]]/g, '');
+    const parts = {};
+    clean.split('|').forEach(part => {
+      const [key, ...val] = part.split(':');
+      if (key && val.length) parts[key.trim()] = val.join(':').trim();
+    });
+    if (!parts['DATE'] || !parts['PLATFORM']) return null;
+    return {
+      date: parts['DATE'],
+      time: parts['TIME'] || '09:00am',
+      platform: parts['PLATFORM'],
+      type: parts['TYPE'] || 'Feed Post'
+    };
+  }
+
+  function buildDateString(dateStr, timeStr) {
+    // dateStr: "17 May 2026", timeStr: "08:00pm"
+    try {
+      const months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+      const parts = dateStr.trim().split(' ');
+      const day = parseInt(parts[0]);
+      const month = months[parts[1].slice(0,3)];
+      const year = parseInt(parts[2]);
+
+      // Parse time
+      const timeParts = timeStr.toLowerCase().replace(' ','').match(/(\d+):(\d+)(am|pm)/);
+      let hour = parseInt(timeParts[1]);
+      const min = parseInt(timeParts[2]);
+      const ampm = timeParts[3];
+      if (ampm === 'pm' && hour !== 12) hour += 12;
+      if (ampm === 'am' && hour === 12) hour = 0;
+
+      const d = new Date(year, month, day, hour, min);
+      return d.toISOString().slice(0,16);
+    } catch(e) {
+      return '';
+    }
+  }
+
+  function normaliseType(type) {
+    const t = type.toLowerCase();
+    if (t.includes('reel')) return 'reel';
+    if (t.includes('carousel')) return 'carousel';
+    if (t.includes('story')) return 'story';
+    if (t.includes('broadcast')) return 'broadcast';
+    return 'feed';
+  }
+
+  function renderImportPreview() {
+    const preview = document.getElementById('importPreview');
+    const list = document.getElementById('importList');
+    const summary = document.getElementById('importSummary');
+    const subSummary = document.getElementById('importSubSummary');
+
+    const regular = importedPosts.filter(p => !p.isYNTP);
+    const yntp = importedPosts.filter(p => p.isYNTP);
+
+    summary.textContent = `${importedPosts.length} posts found — ${regular.length} to schedule, ${yntp.length} YNTP reminders`;
+    subSummary.textContent = 'Review below before adding to your queue. All posts will be added as drafts.';
+
+    list.innerHTML = importedPosts.map((post, i) => {
+      const d = post.date ? new Date(post.date) : null;
+      const dateStr = d ? d.toLocaleDateString('en-AU', { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+      const platformLabel = post.isYNTP ? 'YNTP' : post.platforms.ig && post.platforms.fb ? 'IG + FB' : post.platforms.ig ? 'Instagram' : 'Facebook';
+      const colour = post.isYNTP ? 'var(--plum)' : post.platforms.ig && post.platforms.fb ? 'var(--mauve)' : post.platforms.ig ? '#e1306c' : '#1877f2';
+      const preview = post.caption.slice(0, 120) + (post.caption.length > 120 ? '...' : '');
+
+      return `<div style="background:white; border:1px solid var(--border); border-radius:10px; padding:16px 20px; display:flex; gap:14px; align-items:flex-start;">
+        <div style="width:10px; min-width:10px; height:10px; border-radius:50%; background:${colour}; margin-top:4px;"></div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; color:var(--navy); line-height:1.5; margin-bottom:8px;">${escHtml(preview)}</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:10px; letter-spacing:0.1em; text-transform:uppercase; padding:2px 8px; border-radius:100px; background:rgba(0,0,0,0.05); color:var(--plum); font-weight:500;">${platformLabel}</span>
+            <span style="font-size:10px; letter-spacing:0.1em; text-transform:uppercase; padding:2px 8px; border-radius:100px; background:rgba(0,0,0,0.05); color:var(--plum); font-weight:500;">${post.type}</span>
+            ${dateStr ? `<span style="font-size:11px; color:#bbb;">${dateStr}</span>` : ''}
+            ${post.isYNTP ? `<span style="font-size:10px; padding:2px 8px; border-radius:100px; background:rgba(123,94,167,0.1); color:var(--plum); font-weight:500; letter-spacing:0.08em; text-transform:uppercase;">Manual reminder</span>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    preview.style.display = 'block';
+  }
+
+  function confirmImport() {
+    if (!importedPosts.length) return;
+    const existing = posts.map(p => p.date + p.caption.slice(0,30));
+    let added = 0;
+    importedPosts.forEach(post => {
+      const key = post.date + post.caption.slice(0,30);
+      if (!existing.includes(key)) {
+        posts.unshift(post);
+        added++;
+      }
+    });
+    savePosts();
+    clearImport();
+    renderCalendar();
+    showToast(`${added} posts added to your queue.`, 'success');
+    showPage('queue');
+  }
+
+  function clearImport() {
+    importedPosts = [];
+    document.getElementById('importPreview').style.display = 'none';
+    document.getElementById('importFile').value = '';
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+</script>
+</body>
+</html>
