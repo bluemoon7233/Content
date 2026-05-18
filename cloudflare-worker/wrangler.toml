@@ -1,0 +1,11 @@
+name = "blue-moon-publisher"
+main = "worker.js"
+compatibility_date = "2024-09-23"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "blue-moon-images"
+
+[[kv_namespaces]]
+binding = "STORE"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"

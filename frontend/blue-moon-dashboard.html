@@ -925,14 +925,11 @@
 
             <div class="media-upload-area" onclick="document.getElementById('mediaFile').click()">
               <div style="font-size: 24px;">⊕</div>
-              <p>Tap to attach image from Canva export</p>
-              <p style="color:#bbb; font-size:11px; margin-top:4px;">JPG, PNG · preview only — use URL below for Instagram</p>
-              <input type="file" id="mediaFile" accept="image/*" onchange="handleMedia(event)">
+              <p>Tap to attach image or video from Canva</p>
+              <p style="color:#bbb; font-size:11px; margin-top:4px;">JPG, PNG, MP4 supported</p>
+              <input type="file" id="mediaFile" accept="image/*,video/*" onchange="handleMedia(event)">
             </div>
             <div class="media-preview" id="mediaPreview"></div>
-            <div class="field-group" style="margin-top:12px;">
-              <input type="url" id="imageUrlInput" class="form-input" placeholder="Public image URL (required for Instagram — paste Canva share link or CDN URL)" style="font-size:12px; padding:10px 14px;">
-            </div>
 
             <div class="composer-actions">
               <span class="char-count" id="charCount">0 characters</span>
@@ -1079,9 +1076,6 @@
         <option value="story">Story</option>
       </select>
     </div>
-    <div style="margin-top:12px;">
-      <input type="url" id="editImageUrl" class="form-input" placeholder="Public image URL (required for Instagram)" style="font-size:12px; padding:10px 14px;">
-    </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
@@ -1090,28 +1084,7 @@
 </div>
 
 <script>
-  // ─── Meta Graph API base ────────────────────────────────────────────────────
-  const GRAPH = 'https://graph.facebook.com/v21.0';
-
-  async function graphPost(path, params) {
-    const res = await fetch(GRAPH + path, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(params)
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-    return data;
-  }
-
-  async function graphPostFile(path, formData) {
-    const res = await fetch(GRAPH + path, { method: 'POST', body: formData });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-    return data;
-  }
-
-  // ─── STATE ──────────────────────────────────────────────────────────────────
+  // STATE
   let posts = JSON.parse(localStorage.getItem('bm_posts') || '[]');
   let creds = JSON.parse(localStorage.getItem('bm_creds') || 'null');
   let platforms = { ig: true, fb: true };
@@ -1134,8 +1107,10 @@
       document.getElementById('setupScreen').style.display = 'none';
       document.getElementById('app').style.display = 'block';
       updateApiStatus();
-      renderPosts();
-      renderCalendar();
+      loadPostsFromKV().then(() => {
+        renderPosts();
+        renderCalendar();
+      });
       renderCredentials();
       setDefaultDate();
     }
@@ -1163,6 +1138,13 @@
 
     creds = { appId, appSecret, token, pageId, igId };
     localStorage.setItem('bm_creds', JSON.stringify(creds));
+
+    // Save creds to KV for auto-publishing cron
+    fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save_posts', posts, creds })
+    }).catch(() => {});
 
     document.getElementById('setupScreen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
@@ -1281,7 +1263,6 @@
       date: document.getElementById('scheduleDate').value,
       status: 'draft',
       image: mediaBase64 || null,
-      imageUrl: document.getElementById('imageUrlInput').value.trim() || null,
       created: new Date().toISOString()
     };
     posts.unshift(post);
@@ -1304,9 +1285,8 @@
       platforms: { ...platforms },
       type: document.getElementById('postType').value,
       date,
-      status: 'draft',
+      status: 'scheduled',
       image: mediaBase64 || null,
-      imageUrl: document.getElementById('imageUrlInput').value.trim() || null,
       created: new Date().toISOString()
     };
     posts.unshift(post);
@@ -1316,13 +1296,12 @@
 
     const d = new Date(date);
     const formatted = d.toLocaleDateString('en-AU', { weekday:'short', day:'numeric', month:'short' }) + ' at ' + d.toLocaleTimeString('en-AU', { hour:'2-digit', minute:'2-digit' });
-    showToast(`Draft saved — click "Schedule All to Meta" to push to Business Suite`, 'success');
+    showToast(`Scheduled for ${formatted}`, 'success');
   }
 
   function clearComposer() {
     document.getElementById('captionInput').value = '';
     document.getElementById('mediaPreview').innerHTML = '';
-    document.getElementById('imageUrlInput').value = '';
     mediaFiles = [];
     mediaBase64 = null;
     updateCharCount();
@@ -1332,9 +1311,7 @@
   // RENDER POSTS
   function renderPosts() {
     const list = document.getElementById('postsList');
-    let filtered = currentFilter === 'all' ? posts
-      : currentFilter === 'scheduled' ? posts.filter(p => p.status === 'scheduled' || p.status === 'scheduled_meta')
-      : posts.filter(p => p.status === currentFilter);
+    let filtered = currentFilter === 'all' ? posts : posts.filter(p => p.status === currentFilter);
 
     if (filtered.length === 0) {
       list.innerHTML = `<div class="empty-state">
@@ -1350,8 +1327,7 @@
         : post.platforms.ig ? `<span class="post-tag tag-ig">Instagram</span>`
         : `<span class="post-tag tag-fb">Facebook</span>`;
 
-      const statusLabel = { draft:'draft', scheduled:'scheduled', scheduled_meta:'in Business Suite', published:'published' }[post.status] || post.status;
-      const statusTag = `<span class="post-tag tag-${post.status}">${statusLabel}</span>`;
+      const statusTag = `<span class="post-tag tag-${post.status}">${post.status}</span>`;
 
       const dateStr = post.date ? new Date(post.date).toLocaleDateString('en-AU', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
 
@@ -1368,7 +1344,7 @@
           </div>
         </div>
         <div class="post-actions">
-          ${!post.isYNTP && post.status !== 'published' && post.status !== 'scheduled_meta' ? `<button class="btn btn-success btn-sm" onclick="publishPost(${post.id})">Publish</button>` : ''}
+          ${!post.isYNTP && post.status !== 'published' ? `<button class="btn btn-success btn-sm" onclick="publishPost(${post.id})">Publish</button>` : ''}
           <button class="btn btn-secondary btn-sm" onclick="editPost(${post.id})">Edit</button>
           <button class="btn btn-danger btn-sm" onclick="deletePost(${post.id})">Delete</button>
         </div>
@@ -1391,7 +1367,6 @@
     document.getElementById('editCaption').value = post.caption;
     document.getElementById('editDate').value = post.date || '';
     document.getElementById('editType').value = post.type || 'feed';
-    document.getElementById('editImageUrl').value = post.imageUrl || '';
     document.getElementById('editModal').classList.add('open');
   }
 
@@ -1401,7 +1376,7 @@
     post.caption = document.getElementById('editCaption').value.trim();
     post.date = document.getElementById('editDate').value;
     post.type = document.getElementById('editType').value;
-    post.imageUrl = document.getElementById('editImageUrl').value.trim() || null;
+    if (post.date && post.status === 'draft') post.status = 'scheduled';
     savePosts();
     closeModal();
     renderPosts();
@@ -1414,210 +1389,313 @@
     editingId = null;
   }
 
-  // ─── PUBLISH / SCHEDULE ───────────────────────────────────────────────────
+  // PUBLISH
+  const WORKER_URL = 'https://blue-moon-publisher.liz-1b0.workers.dev';
 
   async function publishPost(id) {
     const post = posts.find(p => p.id === id);
     if (!post) return;
-    if (!creds?.token) { showToast('No access token found. Check Settings.', 'error'); return; }
+    if (!creds || !creds.token) { showToast('No access token found. Check Settings.', 'error'); return; }
 
     const platformList = [];
     if (post.platforms.ig) platformList.push('Instagram');
     if (post.platforms.fb) platformList.push('Facebook');
     const platformStr = platformList.join(' + ');
 
-    // Scheduled = more than 10 min in the future (Meta minimum)
-    const schedTs = post.date ? Math.floor(new Date(post.date).getTime() / 1000) : null;
-    const nowTs = Math.floor(Date.now() / 1000);
-    const isScheduled = schedTs && schedTs > nowTs + 600;
+    const isScheduled = post.date && new Date(post.date) > new Date();
     const actionLabel = isScheduled ? 'Schedule in Meta Business Suite' : 'Publish now';
 
-    if (!confirm(`${actionLabel} to ${platformStr}?\n\n"${post.caption.slice(0, 100)}${post.caption.length > 100 ? '…' : ''}"`)) return;
-    showToast(isScheduled ? 'Sending to Business Suite…' : 'Publishing…', '');
+    if (!confirm(`${actionLabel} to ${platformStr}?\n\n"${post.caption.slice(0, 100)}..."`)) return;
 
-    const results = [];
+    showToast(isScheduled ? 'Sending to Business Suite...' : 'Publishing now...', '');
 
-    // ── Facebook ────────────────────────────────────────────────────────────
-    if (post.platforms.fb && creds.pageId) {
-      try {
-        let data;
-        if (post.imageUrl) {
-          // Photo post via URL
-          const params = {
-            access_token: creds.token,
-            caption: post.caption,
-            url: post.imageUrl,
-            published: isScheduled ? 'false' : 'true',
-          };
-          if (isScheduled) params.scheduled_publish_time = schedTs;
-          data = await graphPost(`/${creds.pageId}/photos`, params);
-        } else if (mediaFiles[0] && !isScheduled) {
-          // Direct file upload (publish now only — scheduling requires a URL)
-          const fd = new FormData();
-          fd.append('access_token', creds.token);
-          fd.append('caption', post.caption);
-          fd.append('source', mediaFiles[0]);
-          fd.append('published', 'true');
-          data = await graphPostFile(`/${creds.pageId}/photos`, fd);
-        } else {
-          // Text post
-          const params = {
-            access_token: creds.token,
-            message: post.caption,
-            published: isScheduled ? 'false' : 'true',
-          };
-          if (isScheduled) params.scheduled_publish_time = schedTs;
-          data = await graphPost(`/${creds.pageId}/feed`, params);
-        }
-        results.push({ platform: 'Facebook', success: true, id: data.id || data.post_id });
-      } catch (e) {
-        results.push({ platform: 'Facebook', success: false, error: e.message });
-      }
-    }
-
-    // ── Instagram ───────────────────────────────────────────────────────────
-    if (post.platforms.ig && creds.igId) {
-      if (!post.imageUrl) {
-        results.push({ platform: 'Instagram', success: false, error: 'Instagram requires a public image URL — add one in Edit.' });
-      } else {
-        try {
-          const containerParams = {
-            access_token: creds.token,
-            caption: post.caption,
-            image_url: post.imageUrl,
-          };
-          if (isScheduled) {
-            containerParams.published = 'false';
-            containerParams.scheduled_publish_time = schedTs;
-          }
-          const container = await graphPost(`/${creds.igId}/media`, containerParams);
-
-          if (isScheduled) {
-            results.push({ platform: 'Instagram', success: true });
-          } else {
-            await new Promise(r => setTimeout(r, 3000));
-            const published = await graphPost(`/${creds.igId}/media_publish`, {
-              access_token: creds.token,
-              creation_id: container.id,
-            });
-            results.push({ platform: 'Instagram', success: true, id: published.id });
-          }
-        } catch (e) {
-          results.push({ platform: 'Instagram', success: false, error: e.message });
-        }
-      }
-    }
-
-    const allOk = results.every(r => r.success);
-    const anyOk = results.some(r => r.success);
-    const errors = results.filter(r => !r.success).map(r => `${r.platform}: ${r.error}`).join(' · ');
-
-    if (allOk || anyOk) {
-      post.status = isScheduled ? 'scheduled_meta' : 'published';
-      post.publishedAt = new Date().toISOString();
-      savePosts(); renderPosts(); renderCalendar();
-      if (allOk) {
-        showToast(isScheduled ? `Scheduled in Meta Business Suite · ${platformStr}` : `Published to ${platformStr}`, 'success');
-      } else {
-        showToast(`Partial success. ${errors}`, 'error');
-      }
-    } else {
-      showToast(`Failed: ${errors}`, 'error');
-    }
-  }
-
-  async function debugSchedule() {
-    if (!creds?.token) { showToast('Not connected.', 'error'); return; }
     try {
-      const data = await graphPost(`/${creds.pageId}`, { access_token: creds.token, fields: 'name,id' });
-      alert(`Connected to page: ${data.name} (${data.id})`);
-    } catch(e) {
-      alert('Connection error: ' + e.message);
-    }
-  }
+      let imageUrl = null;
+      let imageFilename = null;
 
-  // SCHEDULE ALL — sends all future-dated drafts to Meta Business Suite
-  async function scheduleAll() {
-    const nowTs = Math.floor(Date.now() / 1000);
-    const eligible = posts.filter(p =>
-      !p.isYNTP &&
-      p.status === 'draft' &&
-      p.date &&
-      Math.floor(new Date(p.date).getTime() / 1000) > nowTs + 600
-    );
+      // Upload image to R2 if attached
+      if (post.image) {
+        showToast('Uploading image...', '');
+        const uploadRes = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'upload_image',
+            imageBase64: post.image,
+            imageType: post.image.match(/data:(.*?);/)?.[1] || 'image/jpeg'
+          })
+        });
+        const uploadData = await uploadRes.json();
+        if (!uploadData.success) {
+          showToast(`Image upload failed: ${uploadData.error}`, 'error');
+          return;
+        }
+        imageUrl = uploadData.url;
+        imageFilename = uploadData.filename;
+      }
 
-    if (eligible.length === 0) {
-      showToast(`No schedulable drafts found. Posts need a date at least 10 min in the future.`, 'error');
-      return;
-    }
-
-    if (!confirm(`Schedule ${eligible.length} posts to Meta Business Suite?\n\nThey will appear in Business Suite as scheduled posts.`)) return;
-    showToast(`Scheduling ${eligible.length} posts…`, '');
-
-    let success = 0, failed = 0;
-
-    for (const post of eligible) {
-      const schedTs = Math.floor(new Date(post.date).getTime() / 1000);
       const results = [];
+      const fbAction = isScheduled ? 'schedule_facebook' : 'publish_facebook';
+      const igAction = isScheduled ? 'schedule_instagram_container' : 'publish_instagram_container';
 
       // Facebook
       if (post.platforms.fb && creds.pageId) {
-        try {
-          const params = {
-            access_token: creds.token,
-            published: 'false',
-            scheduled_publish_time: schedTs,
-          };
-          if (post.imageUrl) {
-            params.caption = post.caption;
-            params.url = post.imageUrl;
-            await graphPost(`/${creds.pageId}/photos`, params);
-          } else {
-            params.message = post.caption;
-            await graphPost(`/${creds.pageId}/feed`, params);
-          }
-          results.push({ ok: true });
-        } catch(e) {
-          results.push({ ok: false, err: 'FB: ' + e.message });
-        }
+        const res = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: fbAction,
+            token: creds.token,
+            pageId: creds.pageId,
+            caption: post.caption,
+            imageUrl,
+            postType: post.type,
+            scheduledTime: post.date
+          })
+        });
+        const data = await res.json();
+        results.push({ platform: 'Facebook', ...data });
       }
 
       // Instagram
       if (post.platforms.ig && creds.igId) {
-        if (!post.imageUrl) {
-          results.push({ ok: false, err: 'IG: no public image URL' });
+        if (!imageUrl) {
+          results.push({ platform: 'Instagram', success: false, error: 'Instagram requires an image — please attach one.' });
         } else {
-          try {
-            await graphPost(`/${creds.igId}/media`, {
-              access_token: creds.token,
+          const containerRes = await fetch(WORKER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: igAction,
+              token: creds.token,
+              igId: creds.igId,
               caption: post.caption,
-              image_url: post.imageUrl,
-              published: 'false',
-              scheduled_publish_time: schedTs,
+              imageUrl,
+              postType: post.type,
+              scheduledTime: post.date
+            })
+          });
+          const containerData = await containerRes.json();
+
+          if (!containerData.success) {
+            results.push({ platform: 'Instagram', success: false, error: containerData.error });
+          } else if (!isScheduled) {
+            // Wait 3 seconds for Meta to fetch the image before publishing
+            await new Promise(r => setTimeout(r, 3000));
+            const publishRes = await fetch(WORKER_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'publish_instagram_publish',
+                token: creds.token,
+                igId: creds.igId,
+                containerId: containerData.containerId
+              })
             });
-            results.push({ ok: true });
-          } catch(e) {
-            results.push({ ok: false, err: 'IG: ' + e.message });
+            const publishData = await publishRes.json();
+            results.push({ platform: 'Instagram', ...publishData });
+          } else {
+            results.push({ platform: 'Instagram', success: true });
           }
         }
       }
 
-      if (results.length > 0 && results.some(r => r.ok)) {
-        post.status = 'scheduled_meta';
-        post.publishedAt = new Date().toISOString();
-        success++;
-      } else {
-        failed++;
+      // Delete image after publishing — wait 5 seconds for Meta to fetch it first
+      if (imageFilename) {
+        await new Promise(r => setTimeout(r, 5000));
+        await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'delete_image', filename: imageFilename })
+        });
       }
 
-      await new Promise(r => setTimeout(r, 400));
+      const allOk = results.every(r => r.success);
+      const errors = results.filter(r => !r.success).map(r => `${r.platform}: ${r.error}`).join(', ');
+
+      if (allOk) {
+        post.status = isScheduled ? 'scheduled_meta' : 'published';
+        post.publishedAt = new Date().toISOString();
+        savePosts();
+        renderPosts();
+        renderCalendar();
+        showToast(isScheduled ? `Scheduled in Meta Business Suite for ${platformStr}.` : `Published to ${platformStr} successfully.`, 'success');
+      } else if (results.some(r => r.success)) {
+        post.status = isScheduled ? 'scheduled_meta' : 'published';
+        post.publishedAt = new Date().toISOString();
+        savePosts();
+        renderPosts();
+        renderCalendar();
+        showToast(`Partially done. Failed: ${errors}`, 'error');
+      } else {
+        showToast(`Failed: ${errors}`, 'error');
+      }
+
+    } catch (err) {
+      showToast(`Failed: ${err.message}`, 'error');
+    }
+  }
+
+  function buildPublishPrompt(post, creds) {
+    const platforms = [];
+    if (post.platforms.ig) platforms.push(`Instagram (Account ID: ${creds.igId})`);
+    if (post.platforms.fb) platforms.push(`Facebook Page (Page ID: ${creds.pageId})`);
+
+    return `You are a social media publishing assistant. Please publish the following post using the Meta Graph API.
+
+ACCESS TOKEN: ${creds.token}
+PLATFORMS: ${platforms.join(', ')}
+POST TYPE: ${post.type}
+CAPTION: ${post.caption}
+${post.image ? `IMAGE: Base64 image is attached (upload as media)` : 'NO IMAGE — text only post'}
+
+Instructions:
+- For Facebook: POST to https://graph.facebook.com/v19.0/${creds.pageId}/feed with message=${encodeURIComponent(post.caption)}&access_token=TOKEN
+- For Instagram feed post: First create a media container at https://graph.facebook.com/v19.0/${creds.igId}/media then publish it at /media_publish
+- Respond with "SUCCESS" if published, or the error message if it failed.
+- Keep response brief.`;
+  }
+
+  async function debugSchedule() {
+    const testPost = posts.find(p => !p.isYNTP && p.date);
+    if (!testPost) { showToast('No posts with dates found to debug.', 'error'); return; }
+
+    showToast('Running debug — check the alert...', '');
+
+    try {
+      const res = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'debug_schedule',
+          token: creds.token,
+          pageId: creds.pageId,
+          igId: creds.igId,
+          caption: 'Debug test post',
+          imageUrl: null,
+          scheduledTime: testPost.date
+        })
+      });
+      const data = await res.json();
+      alert('Debug result:\n' + JSON.stringify(data, null, 2));
+    } catch(err) {
+      alert('Debug error: ' + err.message);
+    }
+  }
+
+  // SCHEDULE ALL
+  async function scheduleAll() {
+    const eligible = posts.filter(p => 
+      !p.isYNTP && 
+      p.status === 'draft' && 
+      p.date && 
+      new Date(p.date) > new Date()
+    );
+
+    if (eligible.length === 0) {
+      showToast(`No future-dated drafts found. Total posts in queue: ${posts.length}. Check posts have a future date and status is Draft.`, 'error');
+      return;
     }
 
-    savePosts(); renderPosts(); renderCalendar();
+    if (!confirm(`Schedule ${eligible.length} posts to Meta Business Suite?\n\nThis will send all future-dated drafts to Instagram and/or Facebook. You can review them in Business Suite before they go live.`)) return;
+
+    showToast(`Scheduling ${eligible.length} posts — please wait...`, '');
+
+    let success = 0;
+    let failed = 0;
+    const failedPosts = [];
+
+    for (const post of eligible) {
+      try {
+        let imageUrl = null;
+        let imageFilename = null;
+
+        // Upload image if attached
+        if (post.image) {
+          const uploadRes = await fetch(WORKER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'upload_image',
+              imageBase64: post.image,
+              imageType: post.image.match(/data:(.*?);/)?.[1] || 'image/jpeg'
+            })
+          });
+          const uploadData = await uploadRes.json();
+          if (uploadData.success) {
+            imageUrl = uploadData.url;
+            imageFilename = uploadData.filename;
+          }
+        }
+
+        const results = [];
+
+        // Schedule to Facebook
+        if (post.platforms.fb && creds.pageId) {
+          const res = await fetch(WORKER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'schedule_facebook',
+              token: creds.token,
+              pageId: creds.pageId,
+              caption: post.caption,
+              imageUrl,
+              postType: post.type,
+              scheduledTime: post.date
+            })
+          });
+          const data = await res.json();
+          results.push(data);
+        }
+
+        // Schedule to Instagram
+        if (post.platforms.ig && creds.igId && imageUrl) {
+          const res = await fetch(WORKER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'schedule_instagram_container',
+              token: creds.token,
+              igId: creds.igId,
+              caption: post.caption,
+              imageUrl,
+              postType: post.type,
+              scheduledTime: post.date
+            })
+          });
+          const data = await res.json();
+          results.push(data);
+        }
+
+        const allOk = results.length > 0 && results.every(r => r.success);
+
+        if (allOk) {
+          post.status = 'scheduled_meta';
+          post.publishedAt = new Date().toISOString();
+          success++;
+        } else {
+          failed++;
+          failedPosts.push(post.caption.slice(0, 40));
+        }
+
+      } catch (err) {
+        failed++;
+        failedPosts.push(post.caption.slice(0, 40));
+      }
+
+      // Small delay between posts to avoid rate limiting
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    savePosts();
+    renderPosts();
+    renderCalendar();
+
     if (failed === 0) {
       showToast(`All ${success} posts scheduled in Meta Business Suite.`, 'success');
     } else {
-      showToast(`${success} scheduled · ${failed} failed (check posts missing image URLs).`, 'error');
+      showToast(`${success} scheduled, ${failed} failed. Check Business Suite.`, 'error');
     }
   }
   function deletePost(id) {
@@ -1629,16 +1707,45 @@
     showToast('Post deleted.');
   }
 
-  // SAVE — localStorage only (base64 images stripped to avoid quota limits)
+  // SAVE
   function savePosts() {
-    const forStorage = posts.map(p => {
+    // Strip base64 images before saving to localStorage to avoid quota errors
+    // Images are kept in memory only and re-attached when needed
+    const postsForStorage = posts.map(p => {
       const { image, ...rest } = p;
       return image ? { ...rest, hasImage: true } : rest;
     });
     try {
-      localStorage.setItem('bm_posts', JSON.stringify(forStorage));
+      localStorage.setItem('bm_posts', JSON.stringify(postsForStorage));
     } catch(e) {
-      console.warn('localStorage quota exceeded — clear some old posts');
+      console.warn('localStorage quota exceeded — posts saved to KV only');
+    }
+    // Sync full posts (with images) to KV
+    fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save_posts', posts })
+    }).catch(() => {});
+  }
+
+  async function loadPostsFromKV() {
+    try {
+      const res = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'load_posts' })
+      });
+      const data = await res.json();
+      if (data.success && data.posts && data.posts.length > 0) {
+        posts = data.posts;
+        // Save lightweight version to localStorage as backup
+        try {
+          const postsForStorage = posts.map(p => { const { image, ...rest } = p; return rest; });
+          localStorage.setItem('bm_posts', JSON.stringify(postsForStorage));
+        } catch(e) {}
+      }
+    } catch(e) {
+      // KV unavailable — use localStorage fallback
     }
   }
 
